@@ -746,5 +746,113 @@
 
     document.addEventListener('DOMContentLoaded', () => { updateSimulation(); filterMarketData('all'); });
 </script>
+
+<!-- Trillet.ai Voice Agent -->
+<style>
+    #trillet-voice-button {
+        position: fixed; bottom: 24px; right: 24px; z-index: 50;
+        width: 56px; height: 56px; border-radius: 50%; border: none; cursor: pointer;
+        background: linear-gradient(135deg, #14b8a6, #0d9488);
+        color: white; display: flex; align-items: center; justify-content: center;
+        box-shadow: 0 4px 24px rgba(45, 212, 191, 0.4);
+        transition: all 0.3s ease;
+    }
+    #trillet-voice-button:hover {
+        transform: scale(1.1);
+        box-shadow: 0 6px 32px rgba(45, 212, 191, 0.6);
+    }
+    #trillet-voice-button.active {
+        background: linear-gradient(135deg, #ef4444, #dc2626);
+        box-shadow: 0 4px 24px rgba(239, 68, 68, 0.4);
+        animation: pulse-ring 1.5s infinite;
+    }
+    @keyframes pulse-ring {
+        0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+        70% { box-shadow: 0 0 0 12px rgba(239, 68, 68, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+    }
+    #trillet-label {
+        position: fixed; bottom: 32px; right: 88px; z-index: 50;
+        background: #132240; color: #cbd5e1; font-family: 'Inter', sans-serif;
+        font-size: 0.75rem; font-weight: 600; padding: 6px 12px;
+        border-radius: 6px; border: 1px solid #1e3a5f;
+        pointer-events: none; opacity: 0; transition: opacity 0.2s;
+        white-space: nowrap;
+    }
+    #trillet-voice-button:hover + #trillet-label { opacity: 1; }
+</style>
+
+<button id="trillet-voice-button" aria-label="Speak with AI Agent">
+    <svg id="trillet-mic-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
+        <path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/>
+    </svg>
+    <svg id="trillet-stop-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" style="display:none;">
+        <rect x="6" y="6" width="12" height="12" rx="2"/>
+    </svg>
+</button>
+<div id="trillet-label">Talk to our AI Agent</div>
+
+<script type="module">
+    // ============================================================
+    // TRILLET.AI VOICE AGENT
+    // Replace these two values with your actual Trillet credentials
+    // ============================================================
+    const WORKSPACE_ID = 'your-workspace-id';  // <-- REPLACE
+    const AGENT_ID     = 'your-agent-id';      // <-- REPLACE
+
+    const { TrilletAgent } = await import('https://cdn.jsdelivr.net/npm/@trillet-ai/web-sdk/+esm');
+
+    const button  = document.getElementById('trillet-voice-button');
+    const micIcon = document.getElementById('trillet-mic-icon');
+    const stopIcon = document.getElementById('trillet-stop-icon');
+    const label   = document.getElementById('trillet-label');
+
+    const agent = new TrilletAgent({ workspaceId: WORKSPACE_ID, agentId: AGENT_ID });
+    let isCalling = false;
+
+    button.addEventListener('click', async () => {
+        if (!isCalling) {
+            try {
+                button.disabled = true;
+                label.textContent = 'Connecting...';
+                label.style.opacity = '1';
+                await agent.startPublicCall();
+                isCalling = true;
+                button.classList.add('active');
+                micIcon.style.display = 'none';
+                stopIcon.style.display = 'block';
+                label.textContent = 'Click to hang up';
+                setTimeout(() => { label.style.opacity = '0'; }, 2000);
+            } catch (err) {
+                console.error('Trillet call failed:', err);
+                label.textContent = 'Call failed - try again';
+                setTimeout(() => { label.style.opacity = '0'; }, 3000);
+            } finally {
+                button.disabled = false;
+            }
+        } else {
+            agent.endCall();
+            isCalling = false;
+            button.classList.remove('active');
+            micIcon.style.display = 'block';
+            stopIcon.style.display = 'none';
+            label.textContent = 'Talk to our AI Agent';
+        }
+    });
+
+    agent.on('disconnected', () => {
+        isCalling = false;
+        button.classList.remove('active');
+        micIcon.style.display = 'block';
+        stopIcon.style.display = 'none';
+        label.textContent = 'Talk to our AI Agent';
+        button.disabled = false;
+    });
+
+    agent.on('error', (error) => {
+        console.error('Trillet error:', error);
+    });
+</script>
 </body>
 </html>
