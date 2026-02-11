@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Perth Industrial Strategy | Interactive Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@600;700;800;900&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        'heading': ['Poppins', 'sans-serif'],
+                        'display': ['Playfair Display', 'serif'],
+                        'body': ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        navy: {
+                            950: '#060d18',
+                            900: '#0c1829',
+                            800: '#132240',
+                            700: '#1a2d52',
+                            600: '#1e3a5f',
+                        },
+                        gold: {
+                            400: '#f0c560',
+                            500: '#d4a24e',
+                            600: '#b8862f',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0c1829;
+            color: #cbd5e1;
+        }
+
+        h1, .font-heading { font-family: 'Poppins', sans-serif; }
+        h2, h3, .font-display { font-family: 'Playfair Display', serif; }
+
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 100%;
+            height: 300px;
+            max-height: 350px;
+            margin: 0 auto;
+        }
+
+        /* Sidebar */
+        .sidebar-item { transition: all 0.2s ease-in-out; }
+        .sidebar-item:hover, .sidebar-item.active {
+            background-color: rgba(45, 212, 191, 0.08);
+            border-right: 3px solid #2dd4bf;
+            color: #f0fdfa;
+        }
+
+        /* Cards */
+        .content-card {
+            background-color: #132240;
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            border: 1px solid rgba(30, 58, 95, 0.6);
+            transition: border-color 0.2s;
+        }
+        .content-card:hover {
+            border-color: rgba(45, 212, 191, 0.2);
+        }
+
+        /* Range Slider */
+        input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none; height: 16px; width: 16px;
+            border-radius: 50%; background: #2dd4bf; margin-top: -6px; cursor: pointer;
+            box-shadow: 0 0 8px rgba(45, 212, 191, 0.4);
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%; height: 4px; background: #1e3a5f; border-radius: 2px;
+        }
+
+        /* Audio Player */
+        .audio-player {
+            background: linear-gradient(135deg, rgba(45, 212, 191, 0.06) 0%, rgba(19, 34, 64, 0.8) 100%);
+            border: 1px solid rgba(45, 212, 191, 0.2);
+            border-radius: 0.75rem;
+            padding: 1rem 1.25rem;
+            display: flex; align-items: center; gap: 0.75rem;
+            transition: border-color 0.2s;
+        }
+        .audio-player:hover { border-color: rgba(45, 212, 191, 0.4); }
+        .audio-player audio { flex: 1; height: 36px; border-radius: 999px; filter: invert(1) hue-rotate(180deg); }
+
+        /* Video Container */
+        .video-container {
+            position: relative; width: 100%; padding-bottom: 56.25%;
+            border-radius: 0.75rem; overflow: hidden; background: #060d18;
+        }
+        .video-container video, .video-container iframe {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0;
+        }
+
+        /* Buttons */
+        .download-btn {
+            display: inline-flex; align-items: center; gap: 0.5rem;
+            padding: 0.75rem 1.5rem; border-radius: 0.5rem;
+            font-weight: 600; font-size: 0.875rem;
+            transition: all 0.2s ease; text-decoration: none; cursor: pointer;
+            font-family: 'Inter', sans-serif;
+        }
+        .download-btn-primary {
+            background: linear-gradient(135deg, #14b8a6, #0d9488);
+            color: white; border: 2px solid transparent;
+        }
+        .download-btn-primary:hover {
+            background: linear-gradient(135deg, #2dd4bf, #14b8a6);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 20px rgba(45, 212, 191, 0.3);
+        }
+        .download-btn-outline {
+            background: transparent; color: #94a3b8;
+            border: 2px solid #1e3a5f;
+        }
+        .download-btn-outline:hover {
+            border-color: #2dd4bf; color: #2dd4bf;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 20px rgba(45, 212, 191, 0.1);
+        }
+        .download-btn-gold {
+            background: linear-gradient(135deg, #d4a24e, #f0c560);
+            color: #0c1829; border: 2px solid transparent;
+            font-weight: 700;
+        }
+        .download-btn-gold:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 20px rgba(212, 162, 78, 0.3);
+        }
+
+        /* Section label */
+        .section-label {
+            display: inline-flex; align-items: center; gap: 0.5rem;
+            font-size: 0.7rem; font-weight: 600; letter-spacing: 0.15em;
+            text-transform: uppercase; color: #2dd4bf;
+            font-family: 'Inter', sans-serif;
+        }
+        .section-label::before {
+            content: ''; display: block; width: 24px; height: 2px;
+            background: #2dd4bf; border-radius: 1px;
+        }
+
+        /* Animations */
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(16px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        .fade-in { animation: fadeInUp 0.5s ease-out; }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #0c1829; }
+        ::-webkit-scrollbar-thumb { background: #1e3a5f; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #2dd4bf; }
+
+        /* Gold accent border cards */
+        .accent-border-gold { border-left: 3px solid #d4a24e; }
+        .accent-border-teal { border-left: 3px solid #2dd4bf; }
+        .accent-border-orange { border-left: 3px solid #f97316; }
+        .accent-border-rose { border-left: 3px solid #fb7185; }
+    </style>
+</head>
+<body class="h-screen flex flex-col md:flex-row overflow-hidden">
+
+<!-- Sidebar -->
+<nav class="w-full md:w-64 bg-navy-950 border-r border-navy-700/30 flex flex-col z-20 flex-shrink-0">
+    <div class="p-5 border-b border-navy-700/30">
+        <div class="flex items-center gap-3 mb-3">
+            <img src="assets/logo.jpg" alt="Perth SPV Logo" class="h-20 w-auto" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+            <div class="flex flex-col" style="display:none;">
+                <span class="font-heading text-lg font-bold text-white tracking-tight">PERTH <span class="text-teal-400">SPV</span></span>
+            </div>
+        </div>
+        <div>
+            <h1 class="font-heading text-base font-bold text-white tracking-tight">ROLL-UP <span class="text-gold-400">STRATEGY</span></h1>
+            <p class="text-xs text-slate-500 mt-0.5 font-body">Perth Industrial 2025/26</p>
+        </div>
+    </div>
+
+    <div class="flex-1 overflow-y-auto py-4 space-y-0.5">
+        <button onclick="navigateTo('summary')" id="nav-summary" class="sidebar-item w-full text-left px-6 py-3 text-slate-400 text-sm active">
+            <span class="mr-2">📑</span> Executive Summary
+        </button>
+        <button onclick="navigateTo('market')" id="nav-market" class="sidebar-item w-full text-left px-6 py-3 text-slate-400 text-sm">
+            <span class="mr-2">🌏</span> Market Intelligence
+        </button>
+        <button onclick="navigateTo('compliance')" id="nav-compliance" class="sidebar-item w-full text-left px-6 py-3 text-slate-400 text-sm">
+            <span class="mr-2">⚖️</span> Compliance Wizard
+        </button>
+        <button onclick="navigateTo('simulator')" id="nav-simulator" class="sidebar-item w-full text-left px-6 py-3 text-slate-400 text-sm">
+            <span class="mr-2">🧮</span> Deal Simulator
+        </button>
+        <button onclick="navigateTo('roadmap')" id="nav-roadmap" class="sidebar-item w-full text-left px-6 py-3 text-slate-400 text-sm">
+            <span class="mr-2">🚀</span> Execution Roadmap
+        </button>
+        <button onclick="navigateTo('resources')" id="nav-resources" class="sidebar-item w-full text-left px-6 py-3 text-slate-400 text-sm">
+            <span class="mr-2">📁</span> Resources
+        </button>
+    </div>
+
+    <div class="p-4 border-t border-navy-700/30 bg-navy-950/80">
+        <div class="text-xs text-slate-600">
+            <strong class="text-slate-500">Status:</strong> Operational<br>
+            <strong class="text-slate-500">Mode:</strong> Rigid / Analytical
+        </div>
+    </div>
+</nav>
+
+<!-- Main Content -->
+<main class="flex-1 overflow-y-auto p-4 md:p-8 bg-navy-900 relative" id="main-content">
+
+    <!-- ===== EXECUTIVE SUMMARY ===== -->
+    <section id="section-summary" class="space-y-6 fade-in">
+        <div class="mb-2">
+            <div class="section-label mb-3">Mission Brief</div>
+            <h2 class="font-heading text-3xl md:text-4xl font-extrabold text-white leading-tight">Mission <span class="text-gold-400">Parameters</span></h2>
+            <p class="text-slate-400 mt-3 max-w-3xl leading-relaxed">
+                This strategic blueprint outlines the execution protocol for a high-yield industrial property roll-up in Perth.
+                The objective is to acquire "boring" logistics assets under a strict <strong class="text-white">$2M SPV cap</strong> while servicing <strong class="text-white">12%+ private capital costs</strong>.
+            </p>
+        </div>
+
+        <!-- Audio Player -->
+        <div class="audio-player max-w-2xl">
+            <div class="flex-shrink-0 bg-teal-500/20 text-teal-400 w-9 h-9 rounded-full flex items-center justify-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                    <path d="M18 3a1 1 0 00-1.196-.98l-10 2A1 1 0 006 5v9.114A4.369 4.369 0 005 14c-1.657 0-3 .895-3 2s1.343 2 3 2 3-.895 3-2V7.82l8-1.6v5.894A4.37 4.37 0 0015 12c-1.657 0-3 .895-3 2s1.343 2 3 2 3-.895 3-2V3z"/>
+                </svg>
+            </div>
+            <div class="flex-shrink-0">
+                <span class="text-xs font-semibold text-teal-400 uppercase tracking-wider">Audio Overview</span>
+            </div>
+            <audio controls preload="metadata" class="flex-1">
+                <source src="assets/audio.m4a" type="audio/mp4">
+                <source src="assets/audio-overview.mp3" type="audio/mpeg">
+            </audio>
+        </div>
+
+        <!-- KPI Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+            <div class="content-card accent-border-teal">
+                <div class="text-xs font-semibold text-teal-400 uppercase tracking-wider">Target Asset Class</div>
+                <div class="text-2xl font-heading font-bold text-white mt-2">Industrial "B-Grade"</div>
+                <p class="text-xs text-slate-500 mt-2">Functional logistics hubs in East/South Perth.</p>
+            </div>
+            <div class="content-card accent-border-gold">
+                <div class="text-xs font-semibold text-gold-400 uppercase tracking-wider">Financial Constraint</div>
+                <div class="text-2xl font-heading font-bold text-white mt-2">$2,000,000 Max</div>
+                <p class="text-xs text-slate-500 mt-2">Hard cap per SPV to manage risk exposure.</p>
+            </div>
+            <div class="content-card accent-border-rose">
+                <div class="text-xs font-semibold text-rose-400 uppercase tracking-wider">Private Capital Cost</div>
+                <div class="text-2xl font-heading font-bold text-white mt-2">12.0% - 12.5%</div>
+                <p class="text-xs text-slate-500 mt-2">Requires aggressive carry and yield checks.</p>
+            </div>
+        </div>
+
+        <!-- Charts -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            <div class="content-card">
+                <h3 class="font-display text-xl font-semibold text-white mb-3">Capital Structure Target</h3>
+                <p class="text-sm text-slate-400 mb-4">
+                    Tiered capital stack balancing senior bank debt against high-cost private bridge equity.
+                </p>
+                <div class="chart-container"><canvas id="capitalStackChart"></canvas></div>
+            </div>
+            <div class="content-card">
+                <h3 class="font-display text-xl font-semibold text-white mb-3">Strategic Logic Layers</h3>
+                <div class="space-y-4 mt-2">
+                    <div class="flex items-start">
+                        <div class="bg-teal-500/10 text-teal-400 p-2 rounded text-lg mr-3 flex-shrink-0">🌲</div>
+                        <div>
+                            <h4 class="font-semibold text-sm text-white">Tree of Thoughts</h4>
+                            <p class="text-xs text-slate-500">Mapping Cap Rate vs Interest Rate sensitivity paths to ensure positive carry.</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start">
+                        <div class="bg-gold-500/10 text-gold-400 p-2 rounded text-lg mr-3 flex-shrink-0">🔗</div>
+                        <div>
+                            <h4 class="font-semibold text-sm text-white">Chain of Verification</h4>
+                            <p class="text-xs text-slate-500">Rigorous audit of s1012E MIS exemptions against 2026 ASIC frameworks.</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start">
+                        <div class="bg-blue-500/10 text-blue-400 p-2 rounded text-lg mr-3 flex-shrink-0">📄</div>
+                        <div>
+                            <h4 class="font-semibold text-sm text-white">Buffer of Thoughts</h4>
+                            <p class="text-xs text-slate-500">Standardizing lender submissions to reduce friction and accelerate approval.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===== MARKET INTELLIGENCE ===== -->
+    <section id="section-market" class="hidden space-y-6 fade-in">
+        <div class="mb-4">
+            <div class="section-label mb-3">Deal Flow</div>
+            <h2 class="font-heading text-3xl md:text-4xl font-extrabold text-white leading-tight">Market <span class="text-gold-400">Intelligence</span></h2>
+            <p class="text-slate-400 mt-3 max-w-3xl leading-relaxed">
+                Phase 1 focuses on identifying high-yield pockets in Perth's East and South precincts.
+                Find assets in the <strong class="text-teal-400">"Sweet Spot"</strong>: low enough price to fit the SPV cap, high enough yield to service debt.
+            </p>
+        </div>
+
+        <!-- Video -->
+        <div class="content-card">
+            <div class="flex items-center gap-3 mb-4">
+                <div class="bg-teal-500/20 text-teal-400 w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"/>
+                    </svg>
+                </div>
+                <div>
+                    <h3 class="font-display text-lg font-semibold text-white">Strategy Video Overview</h3>
+                    <p class="text-xs text-slate-500">Full walkthrough of the Perth industrial roll-up strategy</p>
+                </div>
+            </div>
+            <div class="video-container">
+                <video controls preload="metadata" poster="assets/video-poster.jpg">
+                    <source src="assets/video.mp4" type="video/mp4">
+                    <source src="assets/video-overview.webm" type="video/webm">
+                </video>
+            </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="bg-navy-800 p-4 rounded-lg border border-navy-600/30 flex items-center justify-between flex-wrap gap-4">
+            <span class="font-semibold text-sm text-slate-300">Filter Deal Flow:</span>
+            <div class="flex gap-2">
+                <button onclick="filterMarketData('all')" class="px-3 py-1 text-sm rounded bg-navy-700 text-slate-400 hover:bg-teal-500/20 hover:text-teal-400 transition" id="btn-filter-all">All Assets</button>
+                <button onclick="filterMarketData('sweetspot')" class="px-3 py-1 text-sm rounded bg-navy-700 text-slate-400 hover:bg-teal-500/20 hover:text-teal-400 transition" id="btn-filter-sweet">Sweet Spot Only</button>
+            </div>
+            <div class="text-xs text-slate-600 italic">Showing projected 2025 opportunities</div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            <div class="content-card">
+                <h3 class="font-display text-lg font-semibold text-white mb-2">Yield vs. Price Matrix</h3>
+                <p class="text-sm text-slate-500 mb-4">Targeting assets under $2M with &gt;6.5% Yield.</p>
+                <div class="chart-container"><canvas id="marketScatterChart"></canvas></div>
+            </div>
+            <div class="content-card">
+                <h3 class="font-display text-lg font-semibold text-white mb-2">Precinct Vacancy Rates</h3>
+                <p class="text-sm text-slate-500 mb-4">Lower vacancy = higher rental tension and growth potential.</p>
+                <div class="chart-container"><canvas id="vacancyBarChart"></canvas></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===== COMPLIANCE WIZARD ===== -->
+    <section id="section-compliance" class="hidden space-y-6 fade-in">
+        <div class="mb-4">
+            <div class="section-label mb-3">Regulatory</div>
+            <h2 class="font-heading text-3xl md:text-4xl font-extrabold text-white leading-tight">Compliance <span class="text-gold-400">Protocol</span></h2>
+            <p class="text-slate-400 mt-3 max-w-3xl leading-relaxed">
+                Navigating the Corporations Act to avoid full Retail PDS costs.
+                Verify if your proposed SPV qualifies for an exemption under <strong class="text-white">s1012E</strong>.
+            </p>
+        </div>
+
+        <div class="content-card max-w-2xl mx-auto">
+            <h3 class="font-display text-xl font-semibold text-white border-b border-navy-600/30 pb-3 mb-4">Exemption Validator</h3>
+
+            <div id="wiz-step-1" class="space-y-4">
+                <p class="font-semibold text-slate-300">Question 1: Will you raise funds from more than 20 investors in any 12-month period?</p>
+                <div class="flex gap-4 mt-2">
+                    <button onclick="complianceNext(1, true)" class="flex-1 py-3 bg-navy-800 hover:bg-navy-700 rounded text-slate-300 font-bold border border-navy-600/50 transition">Yes (&gt;20)</button>
+                    <button onclick="complianceNext(1, false)" class="flex-1 py-3 bg-teal-500/10 hover:bg-teal-500/20 rounded text-teal-400 font-bold border border-teal-500/30 transition">No (&le;20)</button>
+                </div>
+            </div>
+
+            <div id="wiz-step-2" class="hidden space-y-4">
+                <p class="font-semibold text-slate-300">Question 2: Is the total amount raised greater than $2 Million AUD?</p>
+                <div class="flex gap-4 mt-2">
+                    <button onclick="complianceNext(2, true)" class="flex-1 py-3 bg-navy-800 hover:bg-navy-700 rounded text-slate-300 font-bold border border-navy-600/50 transition">Yes (&gt;$2M)</button>
+                    <button onclick="complianceNext(2, false)" class="flex-1 py-3 bg-teal-500/10 hover:bg-teal-500/20 rounded text-teal-400 font-bold border border-teal-500/30 transition">No (&le;$2M)</button>
+                </div>
+            </div>
+
+            <div id="wiz-step-3" class="hidden space-y-4">
+                <p class="font-semibold text-slate-300">Question 3: Are all investors "Sophisticated" or "Wholesale" clients (s708 cert)?</p>
+                <div class="flex gap-4 mt-2">
+                    <button onclick="complianceNext(3, true)" class="flex-1 py-3 bg-teal-500/10 hover:bg-teal-500/20 rounded text-teal-400 font-bold border border-teal-500/30 transition">Yes (All Cert)</button>
+                    <button onclick="complianceNext(3, false)" class="flex-1 py-3 bg-navy-800 hover:bg-navy-700 rounded text-slate-300 font-bold border border-navy-600/50 transition">No (Some Retail)</button>
+                </div>
+            </div>
+
+            <div id="wiz-result" class="hidden mt-6 p-4 rounded-lg border">
+                <h4 class="font-bold text-lg mb-2" id="wiz-result-title">Result</h4>
+                <p class="text-sm" id="wiz-result-desc">Description</p>
+                <button onclick="resetCompliance()" class="mt-4 text-xs text-slate-500 underline hover:text-teal-400 transition">Start Over</button>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===== DEAL SIMULATOR ===== -->
+    <section id="section-simulator" class="hidden space-y-6 fade-in">
+        <div class="mb-4">
+            <div class="section-label mb-3">Stress Test</div>
+            <h2 class="font-heading text-3xl md:text-4xl font-extrabold text-white leading-tight">Financial <span class="text-gold-400">Stress Test</span></h2>
+            <p class="text-slate-400 mt-3 max-w-3xl leading-relaxed">
+                Test the "Carry" capability. Adjust market conditions to see if the asset stays cashflow positive when servicing <strong class="text-white">12% private debt</strong> and senior bank financing.
+            </p>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+            <div class="content-card lg:col-span-1 space-y-6">
+                <div>
+                    <label class="block text-sm font-semibold text-slate-300 mb-2">Senior Interest Rate: <span id="val-int" class="text-teal-400">6.0%</span></label>
+                    <input type="range" min="4" max="10" step="0.5" value="6.0" oninput="updateSimulation()" id="input-int">
+                    <p class="text-xs text-slate-600 mt-1">Bank Debt Cost</p>
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-slate-300 mb-2">Asset Cap Rate: <span id="val-cap" class="text-teal-400">6.5%</span></label>
+                    <input type="range" min="4" max="10" step="0.25" value="6.5" oninput="updateSimulation()" id="input-cap">
+                    <p class="text-xs text-slate-600 mt-1">Property Yield (NOI/Price)</p>
+                </div>
+                <div class="bg-navy-800 p-4 rounded border border-navy-600/30 mt-4">
+                    <div class="text-xs font-bold text-slate-500 uppercase tracking-wider">Est. Net Cashflow</div>
+                    <div id="sim-cashflow" class="text-3xl font-heading font-bold text-white mt-2">$0</div>
+                    <div id="sim-status" class="text-xs font-bold mt-1 text-slate-500">NEUTRAL</div>
+                </div>
+            </div>
+            <div class="content-card lg:col-span-2">
+                <h3 class="font-display text-lg font-semibold text-white mb-2">Sensitivity Heatmap</h3>
+                <p class="text-sm text-slate-500 mb-2">Cashflow spread across scenarios.</p>
+                <div id="heatmap-container" class="w-full h-[300px] rounded"></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===== EXECUTION ROADMAP ===== -->
+    <section id="section-roadmap" class="hidden space-y-6 fade-in">
+        <div class="mb-4">
+            <div class="section-label mb-3">Execution</div>
+            <h2 class="font-heading text-3xl md:text-4xl font-extrabold text-white leading-tight">Capital Recycling <span class="text-gold-400">Protocol</span></h2>
+            <p class="text-slate-400 mt-3 max-w-3xl leading-relaxed">
+                The 18-month execution cycle extracts private capital through refinancing, recycling it into the next SPV.
+            </p>
+        </div>
+
+        <div class="content-card">
+            <div class="relative pl-8 border-l-2 border-navy-600/50 space-y-8 py-2">
+                <div class="relative group cursor-pointer" onclick="toggleRoadmapDetail('phase1')">
+                    <div class="absolute -left-[41px] top-0 bg-teal-500 w-6 h-6 rounded-full border-4 border-navy-800 shadow-lg shadow-teal-500/20"></div>
+                    <div class="text-xs font-bold text-gold-400 uppercase tracking-wider mb-1">01</div>
+                    <h4 class="font-display text-lg font-semibold text-white">Month 0-3: Acquisition &amp; Value Add</h4>
+                    <p class="text-slate-400 text-sm mt-1">Purchase under-rented asset. Bridge finance deployment.</p>
+                    <div id="phase1-detail" class="hidden mt-3 bg-navy-800 p-4 rounded border border-navy-600/30 text-sm text-slate-400">
+                        <strong class="text-white">Key Actions:</strong>
+                        <ul class="list-disc ml-4 mt-2 space-y-1">
+                            <li>Secure Bank Debt (60%) + Private Bridge (40% @ 12.5%).</li>
+                            <li>Execute immediate cosmetic Capex (Painting, Signage).</li>
+                            <li>Initiate rent reviews to market levels.</li>
+                        </ul>
+                    </div>
+                    <div class="text-xs text-teal-400 font-bold mt-2 hover:underline">Click for details</div>
+                </div>
+
+                <div class="relative group cursor-pointer" onclick="toggleRoadmapDetail('phase2')">
+                    <div class="absolute -left-[41px] top-0 bg-navy-600 w-6 h-6 rounded-full border-4 border-navy-800 group-hover:bg-teal-400 transition"></div>
+                    <div class="text-xs font-bold text-gold-400 uppercase tracking-wider mb-1">02</div>
+                    <h4 class="font-display text-lg font-semibold text-white">Month 6-12: Stabilization</h4>
+                    <p class="text-slate-400 text-sm mt-1">Lease renewals and WALE extension.</p>
+                    <div id="phase2-detail" class="hidden mt-3 bg-navy-800 p-4 rounded border border-navy-600/30 text-sm text-slate-400">
+                        <strong class="text-white">Key Actions:</strong>
+                        <ul class="list-disc ml-4 mt-2 space-y-1">
+                            <li>Sign new leases at +20% rental uplift.</li>
+                            <li>Ensure WALE &gt; 3.0 Years.</li>
+                            <li>Prepare valuation pack for lenders.</li>
+                        </ul>
+                    </div>
+                    <div class="text-xs text-teal-400 font-bold mt-2 hover:underline">Click for details</div>
+                </div>
+
+                <div class="relative group cursor-pointer" onclick="toggleRoadmapDetail('phase3')">
+                    <div class="absolute -left-[41px] top-0 bg-navy-600 w-6 h-6 rounded-full border-4 border-navy-800 group-hover:bg-teal-400 transition"></div>
+                    <div class="text-xs font-bold text-gold-400 uppercase tracking-wider mb-1">03</div>
+                    <h4 class="font-display text-lg font-semibold text-white">Month 18: Refinance Event</h4>
+                    <p class="text-slate-400 text-sm mt-1">Capital Exit and Recycling.</p>
+                    <div id="phase3-detail" class="hidden mt-3 bg-navy-800 p-4 rounded border border-navy-600/30 text-sm text-slate-400">
+                        <strong class="text-white">Key Actions:</strong>
+                        <ul class="list-disc ml-4 mt-2 space-y-1">
+                            <li>Revaluation based on higher NOI.</li>
+                            <li>Bank LVR expands to cover original Private Equity amount.</li>
+                            <li>Private capital returned to investors + 12.5% yield.</li>
+                            <li>Capital moved to next SPV opportunity.</li>
+                        </ul>
+                    </div>
+                    <div class="text-xs text-teal-400 font-bold mt-2 hover:underline">Click for details</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===== RESOURCES ===== -->
+    <section id="section-resources" class="hidden space-y-6 fade-in">
+        <div class="mb-4">
+            <div class="section-label mb-3">Downloads</div>
+            <h2 class="font-heading text-3xl md:text-4xl font-extrabold text-white leading-tight">Resources &amp; <span class="text-gold-400">Downloads</span></h2>
+            <p class="text-slate-400 mt-3 max-w-3xl leading-relaxed">
+                Access all supporting materials for the Perth Industrial Roll-Up Strategy.
+            </p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+            <div class="content-card flex flex-col items-center text-center">
+                <div class="bg-teal-500/10 text-teal-400 w-14 h-14 rounded-full flex items-center justify-center mb-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" viewBox="0 0 20 20" fill="currentColor">
+                        <path d="M18 3a1 1 0 00-1.196-.98l-10 2A1 1 0 006 5v9.114A4.369 4.369 0 005 14c-1.657 0-3 .895-3 2s1.343 2 3 2 3-.895 3-2V7.82l8-1.6v5.894A4.37 4.37 0 0015 12c-1.657 0-3 .895-3 2s1.343 2 3 2 3-.895 3-2V3z"/>
+                    </svg>
+                </div>
+                <h4 class="font-semibold text-white mb-1">Audio Overview</h4>
+                <p class="text-xs text-slate-500 mb-4">Listen to the strategy walkthrough</p>
+                <a href="assets/audio-overview.wav" download class="download-btn download-btn-outline text-sm mt-auto">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+                    Download Audio
+                </a>
+            </div>
+            <div class="content-card flex flex-col items-center text-center">
+                <div class="bg-gold-500/10 text-gold-400 w-14 h-14 rounded-full flex items-center justify-center mb-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"/>
+                    </svg>
+                </div>
+                <h4 class="font-semibold text-white mb-1">Video Walkthrough</h4>
+                <p class="text-xs text-slate-500 mb-4">Full strategy video presentation</p>
+                <a href="assets/video.mp4" download class="download-btn download-btn-outline text-sm mt-auto">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+                    Download Video
+                </a>
+            </div>
+            <div class="content-card flex flex-col items-center text-center">
+                <div class="bg-blue-500/10 text-blue-400 w-14 h-14 rounded-full flex items-center justify-center mb-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clip-rule="evenodd"/>
+                    </svg>
+                </div>
+                <h4 class="font-semibold text-white mb-1">Strategy Infographic</h4>
+                <p class="text-xs text-slate-500 mb-4">Visual one-pager of the roll-up strategy</p>
+                <a href="assets/photo.png" download class="download-btn download-btn-outline text-sm mt-auto">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+                    Download Infographic
+                </a>
+            </div>
+        </div>
+
+        <!-- Get Everything -->
+        <div class="content-card border-gold-500/30" style="background: linear-gradient(135deg, #132240 0%, #1a2d52 50%, #132240 100%);">
+            <div class="flex flex-col sm:flex-row items-center justify-between gap-6">
+                <div>
+                    <h3 class="font-display text-xl font-semibold text-white">Get Everything</h3>
+                    <p class="text-sm text-slate-400 mt-1">Download all strategy materials or explore the interactive AI notebook.</p>
+                </div>
+                <div class="flex flex-col sm:flex-row gap-3 flex-shrink-0">
+                    <button onclick="downloadAll()" class="download-btn download-btn-gold">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+                        Download All
+                    </button>
+                    <a href="https://notebooklm.google.com/" target="_blank" rel="noopener noreferrer" class="download-btn download-btn-outline">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z"/><path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z"/></svg>
+                        Open in NotebookLM
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="mt-12 pt-6 border-t border-navy-700/30">
+        <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div class="text-xs text-slate-600">Perth Industrial Roll-Up Strategy &middot; Confidential &middot; 2025/26</div>
+            <div class="flex items-center gap-4">
+                <a href="assets/photo.png" download class="text-xs text-slate-500 hover:text-teal-400 transition flex items-center gap-1">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clip-rule="evenodd"/></svg>
+                    Infographic
+                </a>
+                <button onclick="downloadAll()" class="text-xs text-slate-500 hover:text-teal-400 transition flex items-center gap-1">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+                    Download All
+                </button>
+                <a href="https://notebooklm.google.com/" target="_blank" rel="noopener noreferrer" class="text-xs text-slate-500 hover:text-teal-400 transition flex items-center gap-1">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor"><path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z"/><path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z"/></svg>
+                    NotebookLM
+                </a>
+            </div>
+        </div>
+    </footer>
+
+</main>
+
+<script>
+    // --- Dark theme chart defaults ---
+    Chart.defaults.color = '#94a3b8';
+    Chart.defaults.borderColor = 'rgba(30, 58, 95, 0.4)';
+    Chart.defaults.font.family = 'Inter';
+
+    // --- Navigation ---
+    function navigateTo(sectionId) {
+        document.querySelectorAll('main > section').forEach(sec => sec.classList.add('hidden'));
+        const target = document.getElementById(`section-${sectionId}`);
+        target.classList.remove('hidden');
+        target.classList.remove('fade-in');
+        void target.offsetWidth;
+        target.classList.add('fade-in');
+        document.querySelectorAll('.sidebar-item').forEach(btn => btn.classList.remove('active'));
+        const activeBtn = document.getElementById(`nav-${sectionId}`);
+        if (activeBtn) activeBtn.classList.add('active');
+        document.getElementById('main-content').scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // --- Download All ---
+    function downloadAll() {
+        const files = ['assets/audio.m4a', 'assets/video.mp4', 'assets/photo.png'];
+        files.forEach((file, i) => {
+            setTimeout(() => {
+                const a = document.createElement('a');
+                a.href = file; a.download = file.split('/').pop();
+                document.body.appendChild(a); a.click(); document.body.removeChild(a);
+            }, i * 500);
+        });
+    }
+
+    // --- Doughnut ---
+    new Chart(document.getElementById('capitalStackChart').getContext('2d'), {
+        type: 'doughnut',
+        data: {
+            labels: ['Bank Debt (Senior)', 'Private Bridge (12%)', 'Sponsor Equity'],
+            datasets: [{ data: [60, 30, 10], backgroundColor: ['#14b8a6', '#f97316', '#d4a24e'], borderWidth: 0 }]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, padding: 16, color: '#94a3b8' } } }
+        }
+    });
+
+    // --- Bar ---
+    new Chart(document.getElementById('vacancyBarChart').getContext('2d'), {
+        type: 'bar',
+        data: {
+            labels: ['Core East', 'Canning Vale', 'Welshpool', 'Bibra Lake'],
+            datasets: [{ label: 'Vacancy %', data: [1.2, 2.5, 0.8, 3.1], backgroundColor: '#14b8a6', borderRadius: 4 }]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            scales: {
+                y: { beginAtZero: true, grid: { color: 'rgba(30,58,95,0.3)' }, ticks: { color: '#64748b' } },
+                x: { grid: { display: false }, ticks: { color: '#64748b' } }
+            }
+        }
+    });
+
+    // --- Scatter ---
+    const scatterData = [
+        { x: 1.5, y: 6.2, type: 'sweet' }, { x: 1.8, y: 5.8, type: 'standard' },
+        { x: 1.2, y: 7.1, type: 'sweet' }, { x: 2.1, y: 6.5, type: 'expensive' },
+        { x: 0.9, y: 6.8, type: 'sweet' }, { x: 1.95, y: 6.0, type: 'standard' }
+    ];
+    let scatterChart = new Chart(document.getElementById('marketScatterChart').getContext('2d'), {
+        type: 'scatter',
+        data: {
+            datasets: [{
+                label: 'Opportunities', data: scatterData,
+                backgroundColor: (ctx) => {
+                    const v = ctx.raw; if (!v) return '#475569';
+                    if (v.x <= 2.0 && v.y >= 6.5) return '#2dd4bf';
+                    if (v.x > 2.0) return '#fb7185';
+                    return '#f0c560';
+                },
+                pointRadius: 7
+            }]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            scales: {
+                x: { title: { display: true, text: 'Price ($M)', color: '#94a3b8' }, min: 0.5, max: 2.5, grid: { color: 'rgba(30,58,95,0.3)' }, ticks: { color: '#64748b' } },
+                y: { title: { display: true, text: 'Yield (%)', color: '#94a3b8' }, min: 4, max: 9, grid: { color: 'rgba(30,58,95,0.3)' }, ticks: { color: '#64748b' } }
+            },
+            plugins: { tooltip: { callbacks: { label: (ctx) => `$${ctx.raw.x}M @ ${ctx.raw.y}%` } } }
+        }
+    });
+
+    function filterMarketData(mode) {
+        scatterChart.data.datasets[0].data = mode === 'sweetspot' ? scatterData.filter(d => d.x <= 2.0 && d.y >= 6.5) : scatterData;
+        scatterChart.update();
+        document.getElementById('btn-filter-all').className = `px-3 py-1 text-sm rounded transition ${mode === 'all' ? 'bg-teal-500/20 text-teal-400 border border-teal-500/30' : 'bg-navy-700 text-slate-400'}`;
+        document.getElementById('btn-filter-sweet').className = `px-3 py-1 text-sm rounded transition ${mode === 'sweetspot' ? 'bg-teal-500/20 text-teal-400 border border-teal-500/30' : 'bg-navy-700 text-slate-400'}`;
+    }
+
+    // --- Compliance ---
+    function complianceNext(step, answer) {
+        if (step === 1) { document.getElementById('wiz-step-1').classList.add('hidden'); document.getElementById(answer ? 'wiz-step-3' : 'wiz-step-2').classList.remove('hidden'); }
+        else if (step === 2) { if (answer) { document.getElementById('wiz-step-2').classList.add('hidden'); document.getElementById('wiz-step-3').classList.remove('hidden'); } else { showComplianceResult('valid-small'); } }
+        else if (step === 3) { showComplianceResult(answer ? 'valid-wholesale' : 'invalid'); }
+    }
+    function showComplianceResult(type) {
+        ['wiz-step-1','wiz-step-2','wiz-step-3'].forEach(id => document.getElementById(id).classList.add('hidden'));
+        const r = document.getElementById('wiz-result'), t = document.getElementById('wiz-result-title'), d = document.getElementById('wiz-result-desc');
+        r.classList.remove('hidden');
+        if (type === 'valid-small') { r.className = 'mt-6 p-4 rounded-lg border border-teal-500/30 bg-teal-500/10 text-teal-300'; t.innerText = '\u2705 Eligible: Small Scale Exemption'; d.innerText = 'You fit the "20/12 Rule" (Max 20 investors, max $2M). No PDS required.'; }
+        else if (type === 'valid-wholesale') { r.className = 'mt-6 p-4 rounded-lg border border-teal-500/30 bg-teal-500/10 text-teal-300'; t.innerText = '\u2705 Eligible: Wholesale/Sophisticated'; d.innerText = 'All investors hold s708 certificates. No PDS required.'; }
+        else { r.className = 'mt-6 p-4 rounded-lg border border-rose-500/30 bg-rose-500/10 text-rose-300'; t.innerText = '\u274C Retail PDS Required'; d.innerText = 'You do not meet exemption criteria. Full prospectus and ASIC lodgement required.'; }
+    }
+    function resetCompliance() { document.getElementById('wiz-result').classList.add('hidden'); document.getElementById('wiz-step-1').classList.remove('hidden'); }
+
+    // --- Simulator ---
+    function updateSimulation() {
+        const intRate = parseFloat(document.getElementById('input-int').value);
+        const capRate = parseFloat(document.getElementById('input-cap').value);
+        document.getElementById('val-int').innerText = intRate.toFixed(1) + '%';
+        document.getElementById('val-cap').innerText = capRate.toFixed(2) + '%';
+        const price = 1500000, income = price * (capRate / 100), debtCost = (price * 0.6) * (intRate / 100), privateCost = (price * 0.3) * 0.12;
+        const net = income - debtCost - privateCost;
+        const cfEl = document.getElementById('sim-cashflow'), stEl = document.getElementById('sim-status');
+        cfEl.innerText = (net > 0 ? '+' : '-') + '$' + Math.abs(Math.round(net)).toLocaleString();
+        if (net > 0) { cfEl.className = 'text-3xl font-heading font-bold text-teal-400 mt-2'; stEl.innerText = "POSITIVE CARRY"; stEl.className = "text-xs font-bold mt-1 text-teal-400"; }
+        else { cfEl.className = 'text-3xl font-heading font-bold text-rose-400 mt-2'; stEl.innerText = "NEGATIVE CARRY (RISK)"; stEl.className = "text-xs font-bold mt-1 text-rose-400"; }
+        updateHeatmap(intRate, capRate);
+    }
+    function updateHeatmap(ci, cc) {
+        const x = [4,5,6,7,8,9], y = [4,5,6,7,8,9], z = y.map(yv => x.map(xv => yv - xv));
+        Plotly.newPlot('heatmap-container', [
+            { x, y, z, type: 'heatmap', colorscale: [[0,'#881337'],[0.5,'#132240'],[1,'#0d9488']], showscale: false },
+            { x:[ci], y:[cc], mode:'markers', type:'scatter', marker: { color:'#f0c560', size:12, symbol:'cross', line:{width:2, color:'#0c1829'} }, name:'Current' }
+        ], { margin:{t:10,b:30,l:40,r:10}, xaxis:{title:'Interest Rate %', color:'#94a3b8', gridcolor:'rgba(30,58,95,0.3)'}, yaxis:{title:'Cap Rate %', color:'#94a3b8', gridcolor:'rgba(30,58,95,0.3)'}, paper_bgcolor:'rgba(0,0,0,0)', plot_bgcolor:'rgba(0,0,0,0)', font:{color:'#64748b'} }, {displayModeBar:false});
+    }
+    function toggleRoadmapDetail(id) { document.getElementById(id + '-detail').classList.toggle('hidden'); }
+
+    document.addEventListener('DOMContentLoaded', () => { updateSimulation(); filterMarketData('all'); });
+</script>
+</body>
+</html>
